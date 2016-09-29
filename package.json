@@ -2,7 +2,7 @@
   "name": "jsns",
   "version": "1.0.0",
   "description": "Javascript module loader",
-  "main": "jsns.js",
+  "main": "jsns.min.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/threax/jsns.git"
