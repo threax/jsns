@@ -1,0 +1,16 @@
+{
+  "name": "jsns",
+  "version": "1.0.0",
+  "description": "Javascript module loader",
+  "main": "jsns.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/threax/jsns.git"
+  },
+  "author": "Andrew Piper",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/threax/jsns/issues"
+  },
+  "homepage": "https://github.com/threax/jsns#readme"
+}
