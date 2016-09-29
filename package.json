@@ -12,5 +12,11 @@
   "bugs": {
     "url": "https://github.com/threax/jsns/issues"
   },
-  "homepage": "https://github.com/threax/jsns#readme"
+  "homepage": "https://github.com/threax/jsns#readme",
+  "devDependencies": {
+    "gulp": "3.9.1",
+    "gulp-concat": "2.5.2",
+    "gulp-uglify": "1.2.0",
+    "rimraf": "2.2.8"
+  }
 }

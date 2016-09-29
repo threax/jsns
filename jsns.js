@@ -1,6 +1,6 @@
-﻿"use strict";
+﻿var jsns = (function () {
+    "use strict";
 
-var jsns = (function () {
     var loaded = {};
     var unloaded = {};
     var runners = [];
