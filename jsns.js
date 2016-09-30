@@ -128,14 +128,13 @@ var jsns = (function () {
             dependencies = dep;
             factory = fac;
         });
-        //Remove crap that gets added by tsc
-        dependencies.remove('require');
-        dependencies.remove('exports');
+        //Remove crap that gets added by tsc (require and exports)
+        dependencies.splice(0, 2);
         //Fix up paths, remove leading ./ that tsc likes to add / need
         for (var i = 0; i < dependencies.length; ++i) {
             var dep = dependencies[i];
             if (dep[0] === '.' && dep[1] === '/') {
-                dependencies[i] = dep.subString(2);
+                dependencies[i] = dep.substring(2);
             }
         }
         callback(dependencies, function (module, exports) {
@@ -143,13 +142,12 @@ var jsns = (function () {
             for (var _i = 2; _i < arguments.length; _i++) {
                 args[_i - 2] = arguments[_i];
             }
-            args.splice(0, 2);
             args.unshift(exports);
             args.unshift(require);
             factory.apply(this, args);
         });
     }
-    return {
+    var retVal = {
         run: function (dependencies, factory) {
             runners.push(new Library("AnonRunner", dependencies, factory));
             loadRunners();
@@ -160,13 +158,13 @@ var jsns = (function () {
         },
         amd: function (name, discoverFunc) {
             discoverAmd(discoverFunc, function (dependencies, factory) {
-                this.define(name, dependencies, factory);
+                retVal.define(name, dependencies, factory);
             });
             loadRunners();
         },
         runAmd: function (discoverFunc) {
             discoverAmd(discoverFunc, function (dependencies, factory) {
-                this.run(dependencies, factory);
+                retVal.run(dependencies, factory);
             });
             loadRunners();
         },
@@ -188,4 +186,5 @@ var jsns = (function () {
             }
         }
     };
+    return retVal;
 })();
