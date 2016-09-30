@@ -119,6 +119,36 @@ var jsns = (function () {
             console.log(indent + name + ' module not yet loaded.');
         }
     }
+    function require() {
+    }
+    function discoverAmd(discoverFunc, callback) {
+        var dependencies;
+        var factory;
+        discoverFunc(function (dep, fac) {
+            dependencies = dep;
+            factory = fac;
+        });
+        //Remove crap that gets added by tsc
+        dependencies.remove('require');
+        dependencies.remove('exports');
+        //Fix up paths, remove leading ./ that tsc likes to add / need
+        for (var i = 0; i < dependencies.length; ++i) {
+            var dep = dependencies[i];
+            if (dep[0] === '.' && dep[1] === '/') {
+                dependencies[i] = dep.subString(2);
+            }
+        }
+        callback(dependencies, function (module, exports) {
+            var args = [];
+            for (var _i = 2; _i < arguments.length; _i++) {
+                args[_i - 2] = arguments[_i];
+            }
+            args.splice(0, 2);
+            args.unshift(exports);
+            args.unshift(require);
+            factory.apply(this, args);
+        });
+    }
     return {
         run: function (dependencies, factory) {
             runners.push(new Library("AnonRunner", dependencies, factory));
@@ -126,6 +156,18 @@ var jsns = (function () {
         },
         define: function (name, dependencies, factory) {
             unloaded[name] = new Library(name, dependencies, factory);
+            loadRunners();
+        },
+        amd: function (name, discoverFunc) {
+            discoverAmd(discoverFunc, function (dependencies, factory) {
+                this.define(name, dependencies, factory);
+            });
+            loadRunners();
+        },
+        runAmd: function (discoverFunc) {
+            discoverAmd(discoverFunc, function (dependencies, factory) {
+                this.run(dependencies, factory);
+            });
             loadRunners();
         },
         debug: function () {
@@ -147,4 +189,3 @@ var jsns = (function () {
         }
     };
 })();
-//# sourceMappingURL=jsns.js.map
