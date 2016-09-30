@@ -164,7 +164,7 @@
             }
         }
 
-        callback(dependencies, function (module, exports, ...args: any[]) {
+        callback(dependencies, function (exports, module, ...args: any[]) {
             args.unshift(exports);
             args.unshift(require);
             factory.apply(this, args);

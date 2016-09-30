@@ -137,7 +137,7 @@ var jsns = (function () {
                 dependencies[i] = dep.substring(2);
             }
         }
-        callback(dependencies, function (module, exports) {
+        callback(dependencies, function (exports, module) {
             var args = [];
             for (var _i = 2; _i < arguments.length; _i++) {
                 args[_i - 2] = arguments[_i];
