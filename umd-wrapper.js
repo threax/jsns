@@ -79,7 +79,7 @@ function moduleStart(file, settings) {
 
     var autoDepArgs = '';
     if (settings['dependencies'] !== undefined) {
-        for (i = 0; i < settings.dependencies.length; ++i) {
+        for (var i = 0; i < settings.dependencies.length; ++i) {
             var dep = settings.dependencies[i];
             header += '"' + dep + '", '
             autoDepArgs += ', ' + dep.replace('.', '_');
