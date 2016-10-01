@@ -82,7 +82,7 @@ function moduleStart(file, settings) {
         for (var i = 0; i < settings.dependencies.length; ++i) {
             var dep = settings.dependencies[i];
             header += '"' + dep + '", '
-            autoDepArgs += ', ' + dep.replace('.', '_');
+            autoDepArgs += ', ' + dep.replace(/\./g, '_');
         }
     }
 
