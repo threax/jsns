@@ -71,6 +71,13 @@ function moduleStart(file, settings) {
 
     var moduleName = parsed.name;
 
+    if (settings['namespace'] !== undefined) {
+        if (settings.namespace[settings.namespace.length - 1] !== '.') {
+            settings.namespace = settings.namespace + '.';
+        }
+        moduleName = settings.namespace + moduleName;
+    }
+
     var header;
     if (settings['runners'] !== undefined && settings.runners === true
         || (Array.isArray(settings.runners) && settings.runners.includes(moduleName))) {
