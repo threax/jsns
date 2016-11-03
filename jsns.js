@@ -3,6 +3,7 @@ var jsns = (function () {
     var loaded = {};
     var unloaded = {};
     var runners = [];
+    var runBlockers = [];
     function isModuleLoaded(name) {
         return loaded[name] !== undefined;
     }
@@ -77,10 +78,12 @@ var jsns = (function () {
         }
     }
     function loadRunners() {
-        for (var i = 0; i < runners.length; ++i) {
-            var runner = runners[i];
-            if (checkLib(runner)) {
-                runners.splice(i--, 1);
+        if (runBlockers.length === 0) {
+            for (var i = 0; i < runners.length; ++i) {
+                var runner = runners[i];
+                if (checkLib(runner)) {
+                    runners.splice(i--, 1);
+                }
             }
         }
     }
@@ -149,6 +152,16 @@ var jsns = (function () {
                 retVal.run(dependencies, factory);
             });
             loadRunners();
+        },
+        addRunnerBlocker: function (blockerName) {
+            runBlockers.push(blockerName);
+        },
+        removeRunnerBlocker: function (blockerName) {
+            var index = runBlockers.indexOf(blockerName);
+            if (index !== -1) {
+                runBlockers.splice(index, 1);
+                loadRunners();
+            }
         },
         debug: function () {
             if (runners.length > 0) {
