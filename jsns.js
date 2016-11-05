@@ -171,7 +171,7 @@ var jsns = (function () {
                     for (var j = 0; j < runner.dependencies.length; ++j) {
                         var dependency = runner.dependencies[j];
                         if (!isModuleLoaded(dependency.name)) {
-                            recursiveWaitingDebug(dependency.name, 0);
+                            recursiveWaitingDebug(dependency.name, 1);
                         }
                     }
                 }
