@@ -198,7 +198,9 @@
             });
             loadRunners();
         },
-
+        runNamedAmd: function (name) {
+            retVal.run([name], function () { });
+        },
         addRunnerBlocker: function(blockerName){
             runBlockers.push(blockerName);
         },
@@ -232,3 +234,9 @@
 
     return retVal;
 })();
+
+function define(name, deps, factory) {
+    (<any>window).jsns.amd(name, function (cbDefine) {
+        cbDefine(deps, factory);
+    });
+}

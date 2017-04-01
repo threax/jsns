@@ -153,6 +153,9 @@ var jsns = (function () {
             });
             loadRunners();
         },
+        runNamedAmd: function (name) {
+            retVal.run([name], function () { });
+        },
         addRunnerBlocker: function (blockerName) {
             runBlockers.push(blockerName);
         },
@@ -183,4 +186,9 @@ var jsns = (function () {
     };
     return retVal;
 })();
+function define(name, deps, factory) {
+    window.jsns.amd(name, function (cbDefine) {
+        cbDefine(deps, factory);
+    });
+}
 //# sourceMappingURL=jsns.js.map
