@@ -207,7 +207,9 @@
             loadRunners();
         },
         runNamedAmd: function (name) {
-            retVal.run([name], function () { });
+            if(!isModuleLoaded(name)){
+                retVal.run([name], function () { });
+            }//Only run named modules once
         },
         addRunnerBlocker: function(blockerName){
             runBlockers.push(blockerName);
