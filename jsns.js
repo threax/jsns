@@ -1,4 +1,4 @@
-var jsns = (function () {
+var jsns = jsns || (function () {
     "use strict";
     var loaded = {};
     var unloaded = {};
