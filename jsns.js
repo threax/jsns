@@ -10,6 +10,9 @@ var jsns = (function () {
     function isModuleLoadable(name) {
         return unloaded[name] !== undefined;
     }
+    function isModuleDefined(name) {
+        return isModuleLoaded(name) || isModuleLoadable(name);
+    }
     function loadModule(name) {
         var loaded = checkLib(unloaded[name]);
         if (loaded) {
@@ -134,18 +137,22 @@ var jsns = (function () {
     }
     var retVal = {
         run: function (dependencies, factory) {
-            runners.push(new Library("AnonRunner", dependencies, factory));
+            runners.push(new Library("Runner", dependencies, factory));
             loadRunners();
         },
         define: function (name, dependencies, factory) {
-            unloaded[name] = new Library(name, dependencies, factory);
-            loadRunners();
+            if (!isModuleDefined(name)) {
+                unloaded[name] = new Library(name, dependencies, factory);
+                loadRunners();
+            }
         },
         amd: function (name, discoverFunc) {
-            discoverAmd(discoverFunc, function (dependencies, factory) {
-                retVal.define(name, dependencies, factory);
-            });
-            loadRunners();
+            if (!isModuleDefined(name)) {
+                discoverAmd(discoverFunc, function (dependencies, factory) {
+                    retVal.define(name, dependencies, factory);
+                });
+                loadRunners();
+            }
         },
         runAmd: function (discoverFunc) {
             discoverAmd(discoverFunc, function (dependencies, factory) {
