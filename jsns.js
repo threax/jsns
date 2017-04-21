@@ -7,7 +7,8 @@ var JsModuleInstance = (function () {
     return JsModuleInstance;
 }());
 var JsModuleDefinition = (function () {
-    function JsModuleDefinition(name, depNames, factory, loader) {
+    function JsModuleDefinition(name, depNames, factory, loader, moduleCodeFinder) {
+        this.moduleCodeFinder = moduleCodeFinder;
         this.dependencies = [];
         this.name = name;
         this.factory = factory;
@@ -21,6 +22,14 @@ var JsModuleDefinition = (function () {
             }
         }
     }
+    JsModuleDefinition.prototype.getModuleCode = function () {
+        if (this.moduleCodeFinder !== undefined) {
+            return this.moduleCodeFinder();
+        }
+        else {
+            return this.factory;
+        }
+    };
     return JsModuleDefinition;
 }());
 var ModuleManager = (function () {
@@ -36,8 +45,8 @@ var ModuleManager = (function () {
     ModuleManager.prototype.addRunner = function (dependencies, factory) {
         this.runners.push(new JsModuleDefinition("Runner", dependencies, factory, this));
     };
-    ModuleManager.prototype.addModule = function (name, dependencies, factory) {
-        this.unloaded[name] = new JsModuleDefinition(name, dependencies, factory, this);
+    ModuleManager.prototype.addModule = function (name, dependencies, factory, moduleWriter) {
+        this.unloaded[name] = new JsModuleDefinition(name, dependencies, factory, this, moduleWriter);
     };
     ModuleManager.prototype.isModuleLoaded = function (name) {
         return this.loaded[name] !== undefined;
@@ -127,6 +136,16 @@ var ModuleManager = (function () {
             }
         }
     };
+    ModuleManager.prototype.createFileFromLoaded = function () {
+        var modules = "";
+        for (var p in this.loaded) {
+            if (this.loaded.hasOwnProperty(p)) {
+                var mod = this.loaded[p];
+                modules += mod.definition.getModuleCode() + ';\n\n';
+            }
+        }
+        console.log(modules);
+    };
     ModuleManager.prototype.recursiveWaitingDebug = function (name, indent) {
         var indentStr = '';
         for (var i = 0; i < indent; ++i) {
@@ -170,7 +189,7 @@ var ModuleManager = (function () {
             args.unshift(exports);
             args.unshift(this.require);
             factory.apply(this, args);
-        });
+        }, factory);
     };
     return ModuleManager;
 }());
@@ -190,8 +209,8 @@ var Loader = (function () {
     Loader.prototype.amd = function (name, discoverFunc) {
         var _this = this;
         if (!this.moduleManager.isModuleDefined(name)) {
-            this.moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
-                _this.define(name, dependencies, factory);
+            this.moduleManager.discoverAmd(discoverFunc, function (dependencies, factory, amdFactory) {
+                _this.moduleManager.addModule(name, dependencies, factory, function () { return _this.writeAmdFactory(amdFactory); });
             });
             this.moduleManager.loadRunners();
         }
@@ -208,6 +227,12 @@ var Loader = (function () {
     };
     Loader.prototype.printUnloaded = function () {
         this.moduleManager.printUnloaded();
+    };
+    Loader.prototype.createFileFromLoaded = function () {
+        this.moduleManager.createFileFromLoaded();
+    };
+    Loader.prototype.writeAmdFactory = function (amdFactory) {
+        return 'function (exports, module) { var factory = \n' + amdFactory + ';\n var args = []; for (var _i = 2; _i < arguments.length; _i++) { args[_i - 2] = arguments[_i]; } args.unshift(exports); args.unshift(function() {}); factory.apply(this, args); }';
     };
     return Loader;
 }());

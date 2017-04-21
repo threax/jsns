@@ -15,12 +15,14 @@ class JsModuleInstance {
     public exports: any = {};
 }
 
+type ModuleCodeFinder = () => any;
+
 class JsModuleDefinition{
     name: string;
     factory;
     dependencies: Dependency[] = [];
 
-    constructor(name: string, depNames: string[], factory, loader: ModuleManager) {
+    constructor(name: string, depNames: string[], factory, loader: ModuleManager, private moduleCodeFinder?: ModuleCodeFinder) {
         this.name = name;
         this.factory = factory;
 
@@ -32,6 +34,15 @@ class JsModuleDefinition{
                     loaded: loader.isModuleLoaded(depName)
                 });
             }
+        }
+    }
+
+    public getModuleCode() {
+        if (this.moduleCodeFinder !== undefined) {
+            return this.moduleCodeFinder();
+        }
+        else {
+            return this.factory;
         }
     }
 }
@@ -59,8 +70,8 @@ class ModuleManager {
         this.runners.push(new JsModuleDefinition("Runner", dependencies, factory, this));
     }
 
-    addModule(name: string, dependencies: string[], factory) {
-        this.unloaded[name] = new JsModuleDefinition(name, dependencies, factory, this);
+    addModule(name: string, dependencies: string[], factory, moduleWriter?: ModuleCodeFinder) {
+        this.unloaded[name] = new JsModuleDefinition(name, dependencies, factory, this, moduleWriter);
     }
 
     isModuleLoaded(name: string) {
@@ -171,6 +182,17 @@ class ModuleManager {
         }
     }
 
+    createFileFromLoaded() {
+        var modules = "";
+        for (var p in this.loaded) {
+            if (this.loaded.hasOwnProperty(p)) {
+                var mod = this.loaded[p];
+                modules += mod.definition.getModuleCode() + ';\n\n';
+            }
+        }
+        console.log(modules);
+    }
+
     private recursiveWaitingDebug(name, indent) {
         var indentStr = '';
         for (var i = 0; i < indent; ++i) {
@@ -217,8 +239,8 @@ class ModuleManager {
         callback(dependencies, function (exports, module, ...args: any[]) {
             args.unshift(exports);
             args.unshift(this.require);
-            factory.apply(this, args);
-        });
+            factory.apply(this, args); //This is a bit weird here, it will be the module instance from the loader, since it sets that before calling this function.
+        }, factory);
     }
 }
 
@@ -241,8 +263,8 @@ class Loader {
 
     amd(name: string, discoverFunc) {
         if (!this.moduleManager.isModuleDefined(name)) {
-            this.moduleManager.discoverAmd(discoverFunc, (dependencies, factory) => {
-                this.define(name, dependencies, factory);
+            this.moduleManager.discoverAmd(discoverFunc, (dependencies, factory, amdFactory) => {
+                this.moduleManager.addModule(name, dependencies, factory, () => this.writeAmdFactory(amdFactory));
             });
             this.moduleManager.loadRunners();
         }
@@ -263,6 +285,25 @@ class Loader {
 
     printUnloaded() {
         this.moduleManager.printUnloaded();
+    }
+
+    createFileFromLoaded() {
+        this.moduleManager.createFileFromLoaded();
+    }
+
+    private writeAmdFactory(amdFactory) {
+        return 'function (exports, module) { var factory = \n' + amdFactory + ';\n var args = []; for (var _i = 2; _i < arguments.length; _i++) { args[_i - 2] = arguments[_i]; } args.unshift(exports); args.unshift(function() {}); factory.apply(this, args); }';
+        //This is the funciton, but amdFactory will be the actual function code for that factory.
+        //function (exports, module) {
+        //    var factory = amdFactory;
+        //    var args = [];
+        //    for (var _i = 2; _i < arguments.length; _i++) {
+        //        args[_i - 2] = arguments[_i];
+        //    }
+        //    args.unshift(exports);
+        //    args.unshift(function() {});
+        //    factory.apply(this, args); //The this here referes to the module, this is only ever called through apply.
+        //};
     }
 }
 
