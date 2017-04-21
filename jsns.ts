@@ -4,7 +4,7 @@
     simulateModuleLoading?: boolean
 }
 
-var jsnsOptions: ModuleManagerOptions = jsnsOptions || { simulateModuleLoading: true };
+var jsnsOptions: ModuleManagerOptions = jsnsOptions || {};
 var jsns = jsns || 
 (function (options?: ModuleManagerOptions) {
     interface Dependency {
