@@ -27,10 +27,10 @@ var JsModuleDefinition = (function () {
             return this.moduleCodeFinder(this);
         }
         else {
-            return 'jsns.define("' + this.name + '", ' + this.getDependenciesString() + ', ' + this.factory + ');\n';
+            return 'jsns.define("' + this.name + '", ' + this.getDependenciesArg() + ', ' + this.factory + ');\n';
         }
     };
-    JsModuleDefinition.prototype.getDependenciesString = function () {
+    JsModuleDefinition.prototype.getDependenciesArg = function () {
         var deps = '[';
         var sep = '';
         for (var i = 0; i < this.dependencies.length; ++i) {
@@ -175,32 +175,6 @@ var ModuleManager = (function () {
             console.log(indentStr + name + ' module not yet loaded.');
         }
     };
-    ModuleManager.prototype.require = function () {
-    };
-    ModuleManager.prototype.discoverAmd = function (discoverFunc, callback) {
-        var dependencies;
-        var factory;
-        discoverFunc(function (dep, fac) {
-            dependencies = dep;
-            factory = fac;
-        });
-        dependencies.splice(0, 2);
-        for (var i = 0; i < dependencies.length; ++i) {
-            var dep = dependencies[i];
-            if (dep[0] === '.' && dep[1] === '/') {
-                dependencies[i] = dep.substring(2);
-            }
-        }
-        callback(dependencies, function (exports, module) {
-            var args = [];
-            for (var _i = 2; _i < arguments.length; _i++) {
-                args[_i - 2] = arguments[_i];
-            }
-            args.unshift(exports);
-            args.unshift(this.require);
-            factory.apply(this, args);
-        }, factory);
-    };
     return ModuleManager;
 }());
 var Loader = (function () {
@@ -219,7 +193,7 @@ var Loader = (function () {
     Loader.prototype.amd = function (name, discoverFunc) {
         var _this = this;
         if (!this.moduleManager.isModuleDefined(name)) {
-            this.moduleManager.discoverAmd(discoverFunc, function (dependencies, factory, amdFactory) {
+            this.discoverAmd(discoverFunc, function (dependencies, factory, amdFactory) {
                 _this.moduleManager.addModule(name, dependencies, factory, function (def) { return _this.writeAmdFactory(amdFactory, def); });
             });
             this.moduleManager.loadRunners();
@@ -242,7 +216,33 @@ var Loader = (function () {
         this.moduleManager.createFileFromLoaded();
     };
     Loader.prototype.writeAmdFactory = function (amdFactory, def) {
-        return 'define("' + def.name + '", ' + def.getDependenciesString() + ', ' + amdFactory + ');\n';
+        return 'define("' + def.name + '", ' + def.getDependenciesArg() + ', ' + amdFactory + ');\n';
+    };
+    Loader.prototype.require = function () {
+    };
+    Loader.prototype.discoverAmd = function (discoverFunc, callback) {
+        var dependencies;
+        var factory;
+        discoverFunc(function (dep, fac) {
+            dependencies = dep;
+            factory = fac;
+        });
+        dependencies.splice(0, 2);
+        for (var i = 0; i < dependencies.length; ++i) {
+            var dep = dependencies[i];
+            if (dep[0] === '.' && dep[1] === '/') {
+                dependencies[i] = dep.substring(2);
+            }
+        }
+        callback(dependencies, function (exports, module) {
+            var args = [];
+            for (var _i = 2; _i < arguments.length; _i++) {
+                args[_i - 2] = arguments[_i];
+            }
+            args.unshift(exports);
+            args.unshift(this.require);
+            factory.apply(this, args);
+        }, factory);
     };
     return Loader;
 }());

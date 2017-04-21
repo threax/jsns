@@ -42,11 +42,11 @@ class JsModuleDefinition{
             return this.moduleCodeFinder(this);
         }
         else {
-            return 'jsns.define("' + this.name + '", ' + this.getDependenciesString() + ', ' + this.factory + ');\n';
+            return 'jsns.define("' + this.name + '", ' + this.getDependenciesArg() + ', ' + this.factory + ');\n';
         }
     }
 
-    public getDependenciesString(){
+    public getDependenciesArg(){
         var deps = '[';
         var sep = '';
         for (var i = 0; i < this.dependencies.length; ++i) {
@@ -224,35 +224,6 @@ class ModuleManager {
             console.log(indentStr + name + ' module not yet loaded.');
         }
     }
-
-    private require() {
-
-    }
-
-    discoverAmd(discoverFunc, callback) {
-        var dependencies;
-        var factory;
-        discoverFunc(function (dep, fac) {
-            dependencies = dep;
-            factory = fac;
-        });
-        //Remove crap that gets added by tsc (require and exports)
-        dependencies.splice(0, 2);
-
-        //Fix up paths, remove leading ./ that tsc likes to add / need
-        for (var i = 0; i < dependencies.length; ++i) {
-            var dep = dependencies[i];
-            if (dep[0] === '.' && dep[1] === '/') {
-                dependencies[i] = dep.substring(2);
-            }
-        }
-
-        callback(dependencies, function (exports, module, ...args: any[]) {
-            args.unshift(exports);
-            args.unshift(this.require);
-            factory.apply(this, args); //This is a bit weird here, it will be the module instance from the loader, since it sets that before calling this function.
-        }, factory);
-    }
 }
 
 class Loader {
@@ -274,7 +245,7 @@ class Loader {
 
     amd(name: string, discoverFunc) {
         if (!this.moduleManager.isModuleDefined(name)) {
-            this.moduleManager.discoverAmd(discoverFunc, (dependencies, factory, amdFactory) => {
+            this.discoverAmd(discoverFunc, (dependencies, factory, amdFactory) => {
                 this.moduleManager.addModule(name, dependencies, factory, (def: JsModuleDefinition) => this.writeAmdFactory(amdFactory, def));
             });
             this.moduleManager.loadRunners();
@@ -303,7 +274,36 @@ class Loader {
     }
 
     private writeAmdFactory(amdFactory, def: JsModuleDefinition) {
-        return 'define("' + def.name + '", ' + def.getDependenciesString() + ', ' + amdFactory + ');\n'
+        return 'define("' + def.name + '", ' + def.getDependenciesArg() + ', ' + amdFactory + ');\n'
+    }
+
+    private require() {
+
+    }
+
+    private discoverAmd(discoverFunc, callback) {
+        var dependencies;
+        var factory;
+        discoverFunc(function (dep, fac) {
+            dependencies = dep;
+            factory = fac;
+        });
+        //Remove crap that gets added by tsc (require and exports)
+        dependencies.splice(0, 2);
+
+        //Fix up paths, remove leading ./ that tsc likes to add / need
+        for (var i = 0; i < dependencies.length; ++i) {
+            var dep = dependencies[i];
+            if (dep[0] === '.' && dep[1] === '/') {
+                dependencies[i] = dep.substring(2);
+            }
+        }
+
+        callback(dependencies, function (exports, module, ...args: any[]) {
+            args.unshift(exports);
+            args.unshift(this.require);
+            factory.apply(this, args); //This is a bit weird here, it will be the module instance from the loader, since it sets that before calling this function.
+        }, factory);
     }
 }
 
