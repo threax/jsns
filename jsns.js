@@ -24,10 +24,14 @@ var JsModuleDefinition = (function () {
     return JsModuleDefinition;
 }());
 var ModuleManager = (function () {
-    function ModuleManager() {
+    function ModuleManager(options) {
         this.loaded = {};
         this.unloaded = {};
         this.runners = [];
+        if (options === undefined) {
+            options = {};
+        }
+        this.options = options;
     }
     ModuleManager.prototype.addRunner = function (dependencies, factory) {
         this.runners.push(new JsModuleDefinition("Runner", dependencies, factory, this));
@@ -70,12 +74,14 @@ var ModuleManager = (function () {
         }
         if (fullyLoaded) {
             module = new JsModuleInstance(check, this);
-            var args = [module.exports, module];
-            for (var i = 0; i < dependencies.length; ++i) {
-                var dep = dependencies[i];
-                args.push(this.loaded[dep.name].exports);
+            if (!this.options.simulateModuleLoading) {
+                var args = [module.exports, module];
+                for (var i = 0; i < dependencies.length; ++i) {
+                    var dep = dependencies[i];
+                    args.push(this.loaded[dep.name].exports);
+                }
+                check.factory.apply(module, args);
             }
-            check.factory.apply(module, args);
             this.setModuleLoaded(check.name, module);
         }
         return fullyLoaded;
@@ -103,6 +109,22 @@ var ModuleManager = (function () {
         }
         else {
             console.log("No runners remaining.");
+        }
+    };
+    ModuleManager.prototype.printLoaded = function () {
+        console.log("Loaded Modules:");
+        for (var p in this.loaded) {
+            if (this.loaded.hasOwnProperty(p)) {
+                console.log(p);
+            }
+        }
+    };
+    ModuleManager.prototype.printUnloaded = function () {
+        console.log("Unloaded Modules:");
+        for (var p in this.unloaded) {
+            if (this.unloaded.hasOwnProperty(p)) {
+                console.log(p);
+            }
         }
     };
     ModuleManager.prototype.recursiveWaitingDebug = function (name, indent) {
@@ -190,6 +212,12 @@ var Loader = (function () {
     };
     Loader.prototype.debug = function () {
         this.moduleManager.debug();
+    };
+    Loader.prototype.printLoaded = function () {
+        this.moduleManager.printLoaded();
+    };
+    Loader.prototype.printUnloaded = function () {
+        this.moduleManager.printUnloaded();
     };
     return Loader;
 }());

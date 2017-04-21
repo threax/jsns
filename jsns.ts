@@ -3,6 +3,10 @@
     loaded: boolean
 }
 
+interface Map<T> {
+    [key: string]: T;
+}
+
 class JsModuleInstance {
     constructor(public definition: JsModuleDefinition, private loader: ModuleManager) {
     
@@ -32,14 +36,24 @@ class JsModuleDefinition{
     }
 }
 
-interface Map<T> {
-    [key: string]: T;
+interface ModuleManagerOptions {
+    //Simulate loading modules, will skip calling any actual factories, but will still mark modules as loaded.
+    //Useful for build time module level tree shaking.
+    simulateModuleLoading?: boolean
 }
 
 class ModuleManager {
     private loaded: Map<JsModuleInstance> = {};
     private unloaded: Map<JsModuleDefinition> = {};
     private runners: JsModuleDefinition[] = [];
+    private options: ModuleManagerOptions;
+
+    constructor(options?: ModuleManagerOptions) {
+        if (options === undefined) {
+            options = {};
+        }
+        this.options = options;
+    }
 
     addRunner(dependencies: string[], factory) {
         this.runners.push(new JsModuleDefinition("Runner", dependencies, factory, this));
@@ -93,15 +107,18 @@ class ModuleManager {
         //If all dependencies are loaded, load this library
         if (fullyLoaded) {
             module = new JsModuleInstance(check, this);
-            var args = [module.exports, module];
 
-            //Inject dependency arguments
-            for (var i = 0; i < dependencies.length; ++i) {
-                var dep = dependencies[i];
-                args.push(this.loaded[dep.name].exports);
+            if (!this.options.simulateModuleLoading) {
+                var args = [module.exports, module];
+
+                //Inject dependency arguments
+                for (var i = 0; i < dependencies.length; ++i) {
+                    var dep = dependencies[i];
+                    args.push(this.loaded[dep.name].exports);
+                }
+
+                check.factory.apply(module, args);
             }
-
-            check.factory.apply(module, args);
 
             this.setModuleLoaded(check.name, module);
         }
@@ -133,6 +150,24 @@ class ModuleManager {
         }
         else {
             console.log("No runners remaining.");
+        }
+    }
+
+    printLoaded() {
+        console.log("Loaded Modules:");
+        for (var p in this.loaded) {
+            if (this.loaded.hasOwnProperty(p)) {
+                console.log(p);
+            }
+        }
+    }
+
+    printUnloaded() {
+        console.log("Unloaded Modules:");
+        for (var p in this.unloaded) {
+            if (this.unloaded.hasOwnProperty(p)) {
+                console.log(p);
+            }
         }
     }
 
@@ -231,6 +266,14 @@ class Loader {
 
     debug() {
         this.moduleManager.debug();
+    }
+
+    printLoaded() {
+        this.moduleManager.printLoaded();
+    }
+
+    printUnloaded() {
+        this.moduleManager.printUnloaded();
     }
 }
 
