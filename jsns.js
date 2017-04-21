@@ -153,8 +153,11 @@ var ModuleManager = (function () {
     return ModuleManager;
 }());
 var Loader = (function () {
-    function Loader() {
-        this.moduleManager = new ModuleManager();
+    function Loader(moduleManager) {
+        if (moduleManager === undefined) {
+            moduleManager = new ModuleManager();
+        }
+        this.moduleManager = moduleManager;
     }
     Loader.prototype.run = function (dependencies, factory) {
         this.moduleManager.addRunner(dependencies, factory);

@@ -188,7 +188,14 @@ class ModuleManager {
 }
 
 class Loader {
-    private moduleManager = new ModuleManager();
+    private moduleManager;
+
+    constructor(moduleManager?: ModuleManager) {
+        if (moduleManager === undefined) {
+            moduleManager = new ModuleManager();
+        }
+        this.moduleManager = moduleManager;
+    }
 
     run(dependencies, factory) {
         this.moduleManager.addRunner(dependencies, factory);
