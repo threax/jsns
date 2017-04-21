@@ -181,10 +181,6 @@ var Loader = (function () {
         }
         this.moduleManager = moduleManager;
     }
-    Loader.prototype.run = function (dependencies, factory) {
-        this.moduleManager.addRunner(dependencies, factory);
-        this.moduleManager.loadRunners();
-    };
     Loader.prototype.define = function (name, dependencies, factory) {
         if (!this.moduleManager.isModuleDefined(name)) {
             this.moduleManager.addModule(name, dependencies, factory);
@@ -200,15 +196,9 @@ var Loader = (function () {
             this.moduleManager.loadRunners();
         }
     };
-    Loader.prototype.runAmd = function (discoverFunc) {
-        var _this = this;
-        this.moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
-            _this.run(dependencies, factory);
-        });
+    Loader.prototype.run = function (name) {
+        this.moduleManager.addRunner([name], function () { });
         this.moduleManager.loadRunners();
-    };
-    Loader.prototype.runNamedAmd = function (name) {
-        this.run([name], function () { });
     };
     Loader.prototype.debug = function () {
         this.moduleManager.debug();

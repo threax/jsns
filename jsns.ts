@@ -223,7 +223,7 @@ class ModuleManager {
 }
 
 class Loader {
-    private moduleManager;
+    private moduleManager: ModuleManager;
 
     constructor(moduleManager?: ModuleManager) {
         if (moduleManager === undefined) {
@@ -232,19 +232,14 @@ class Loader {
         this.moduleManager = moduleManager;
     }
 
-    run(dependencies, factory) {
-        this.moduleManager.addRunner(dependencies, factory);
-        this.moduleManager.loadRunners();
-    }
-
-    define(name, dependencies, factory) {
+    define(name: string, dependencies: string[], factory) {
         if (!this.moduleManager.isModuleDefined(name)) {
             this.moduleManager.addModule(name, dependencies, factory);
             this.moduleManager.loadRunners();
         }
     }
 
-    amd(name, discoverFunc) {
+    amd(name: string, discoverFunc) {
         if (!this.moduleManager.isModuleDefined(name)) {
             this.moduleManager.discoverAmd(discoverFunc, (dependencies, factory) => {
                 this.define(name, dependencies, factory);
@@ -253,15 +248,9 @@ class Loader {
         }
     }
 
-    runAmd(discoverFunc) {
-        this.moduleManager.discoverAmd(discoverFunc, (dependencies, factory) => {
-            this.run(dependencies, factory);
-        });
+    run(name: string) {
+        this.moduleManager.addRunner([name], () => { });
         this.moduleManager.loadRunners();
-    }
-
-    runNamedAmd(name) {
-        this.run([name], () => { }); //Load the dependency and then do an empty function to simulate a runner.
     }
 
     debug() {
@@ -277,7 +266,7 @@ class Loader {
     }
 }
 
-var jsns: Loader = jsns || new Loader();
+var jsns = jsns || new Loader();
 
 function define(name, deps, factory) {
     jsns.amd(name, function (cbDefine) {
