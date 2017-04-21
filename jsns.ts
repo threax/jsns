@@ -34,7 +34,7 @@ class JsModuleStatus {
      * otherwise there is no need.
      */
     loaded() {
-        this.loader.setModuleLoaded(name, self);
+        this.loader.setModuleLoaded(name, this);
         this.loader.loadRunners();
     }
 }
@@ -44,7 +44,7 @@ class JsModule{
     factory;
     dependencies = [];
 
-    constructor(name, depNames, factory, loader: ModuleManager) {
+    constructor(name: string, depNames: string[], factory, loader: ModuleManager) {
         this.name = name;
         this.factory = factory;
 
@@ -60,48 +60,52 @@ class JsModule{
     }
 }
 
+interface Map<T> {
+    [key: string]: T;
+}
+
 class ModuleManager {
-    private loaded = {};
-    private unloaded = {};
-    private runners = [];
+    private loaded: Map<JsModuleStatus> = {};
+    private unloaded: Map<JsModule> = {};
+    private runners: JsModule[] = [];
     private runBlockers = [];
 
-    addRunner(dependencies, factory) {
+    addRunner(dependencies: string[], factory) {
         this.runners.push(new JsModule("Runner", dependencies, factory, this));
     }
 
-    addModule(name, dependencies, factory) {
+    addModule(name: string, dependencies: string[], factory) {
         this.unloaded[name] = new JsModule(name, dependencies, factory, this);
     }
 
-    isModuleLoaded(name) {
+    isModuleLoaded(name: string) {
         return this.loaded[name] !== undefined;
     }
 
-    isModuleLoadable(name) {
+    isModuleLoadable(name: string) {
         return this.unloaded[name] !== undefined;
     }
 
-    isModuleDefined(name) {
+    isModuleDefined(name: string) {
         return this.isModuleLoaded(name) || this.isModuleLoadable(name);
     }
 
-    loadModule(name) {
-        var loaded = this.checkLib(this.unloaded[name]);
+    loadModule(name: string) {
+        var loaded = this.checkModule(this.unloaded[name]);
         if (loaded) {
             delete this.unloaded[name];
         }
         return loaded;
     }
 
-    setModuleLoaded(name, module) {
+    setModuleLoaded(name: string, module: JsModuleStatus) {
         if (this.loaded[name] === undefined) {
             this.loaded[name] = module;
         }
     }
 
-    checkLib(library) {
-        var dependencies = library.dependencies;
+    checkModule(check: JsModule) {
+        var dependencies = check.dependencies;
         var fullyLoaded = true;
         var module = undefined;
 
@@ -117,7 +121,7 @@ class ModuleManager {
 
         //If all dependencies are loaded, load this library
         if (fullyLoaded) {
-            module = new JsModuleStatus(library.name, this);
+            module = new JsModuleStatus(check.name, this);
             var args = [module.exports, module];
 
             //Inject dependency arguments
@@ -126,10 +130,10 @@ class ModuleManager {
                 args.push(this.loaded[dep.name].exports);
             }
 
-            library.factory.apply(module, args);
+            check.factory.apply(module, args);
 
             if (!module.isLoadingDelayed()) {
-                this.setModuleLoaded(library.name, module);
+                this.setModuleLoaded(check.name, module);
             }
         }
 
@@ -140,7 +144,7 @@ class ModuleManager {
         if (this.runBlockers.length === 0) { //If there are any run blockers, do nothing
             for (var i = 0; i < this.runners.length; ++i) {
                 var runner = this.runners[i];
-                if (this.checkLib(runner)) {
+                if (this.checkModule(runner)) {
                     this.runners.splice(i--, 1);
                 }
             }
@@ -186,7 +190,7 @@ class ModuleManager {
         }
     }
 
-    require() {
+    private require() {
 
     }
 
@@ -283,10 +287,10 @@ class Loader {
     }
 }
 
-var jsns = jsns || new Loader();
+var jsns: Loader = jsns || new Loader();
 
 function define(name, deps, factory) {
-    (<any>window).jsns.amd(name, function (cbDefine) {
+    jsns.amd(name, function (cbDefine) {
         cbDefine(deps, factory);
     });
 }

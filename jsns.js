@@ -12,7 +12,7 @@ var JsModuleStatus = (function () {
         this.loadingDelayed = true;
     };
     JsModuleStatus.prototype.loaded = function () {
-        this.loader.setModuleLoaded(name, self);
+        this.loader.setModuleLoaded(name, this);
         this.loader.loadRunners();
     };
     return JsModuleStatus;
@@ -57,7 +57,7 @@ var ModuleManager = (function () {
         return this.isModuleLoaded(name) || this.isModuleLoadable(name);
     };
     ModuleManager.prototype.loadModule = function (name) {
-        var loaded = this.checkLib(this.unloaded[name]);
+        var loaded = this.checkModule(this.unloaded[name]);
         if (loaded) {
             delete this.unloaded[name];
         }
@@ -68,8 +68,8 @@ var ModuleManager = (function () {
             this.loaded[name] = module;
         }
     };
-    ModuleManager.prototype.checkLib = function (library) {
-        var dependencies = library.dependencies;
+    ModuleManager.prototype.checkModule = function (check) {
+        var dependencies = check.dependencies;
         var fullyLoaded = true;
         var module = undefined;
         for (var i = 0; i < dependencies.length; ++i) {
@@ -81,15 +81,15 @@ var ModuleManager = (function () {
             fullyLoaded = fullyLoaded && dep.loaded;
         }
         if (fullyLoaded) {
-            module = new JsModuleStatus(library.name, this);
+            module = new JsModuleStatus(check.name, this);
             var args = [module.exports, module];
             for (var i = 0; i < dependencies.length; ++i) {
                 var dep = dependencies[i];
                 args.push(this.loaded[dep.name].exports);
             }
-            library.factory.apply(module, args);
+            check.factory.apply(module, args);
             if (!module.isLoadingDelayed()) {
-                this.setModuleLoaded(library.name, module);
+                this.setModuleLoaded(check.name, module);
             }
         }
         return fullyLoaded && !module.isLoadingDelayed();
@@ -98,7 +98,7 @@ var ModuleManager = (function () {
         if (this.runBlockers.length === 0) {
             for (var i = 0; i < this.runners.length; ++i) {
                 var runner = this.runners[i];
-                if (this.checkLib(runner)) {
+                if (this.checkModule(runner)) {
                     this.runners.splice(i--, 1);
                 }
             }
@@ -227,7 +227,7 @@ var Loader = (function () {
 }());
 var jsns = jsns || new Loader();
 function define(name, deps, factory) {
-    window.jsns.amd(name, function (cbDefine) {
+    jsns.amd(name, function (cbDefine) {
         cbDefine(deps, factory);
     });
 }
