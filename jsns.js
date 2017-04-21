@@ -1,24 +1,24 @@
 ;
-var Module = (function () {
-    function Module(name, loader) {
+var JsModuleStatus = (function () {
+    function JsModuleStatus(name, loader) {
         this.loader = loader;
         this.loadingDelayed = false;
         this.exports = {};
     }
-    Module.prototype.isLoadingDelayed = function () {
+    JsModuleStatus.prototype.isLoadingDelayed = function () {
         return this.loadingDelayed;
     };
-    Module.prototype.delayLoading = function () {
+    JsModuleStatus.prototype.delayLoading = function () {
         this.loadingDelayed = true;
     };
-    Module.prototype.loaded = function () {
+    JsModuleStatus.prototype.loaded = function () {
         this.loader.setModuleLoaded(name, self);
         this.loader.loadRunners();
     };
-    return Module;
+    return JsModuleStatus;
 }());
-var Library = (function () {
-    function Library(name, depNames, factory, loader) {
+var JsModule = (function () {
+    function JsModule(name, depNames, factory, loader) {
         this.dependencies = [];
         this.name = name;
         this.factory = factory;
@@ -32,7 +32,7 @@ var Library = (function () {
             }
         }
     }
-    return Library;
+    return JsModule;
 }());
 var ModuleManager = (function () {
     function ModuleManager() {
@@ -42,10 +42,10 @@ var ModuleManager = (function () {
         this.runBlockers = [];
     }
     ModuleManager.prototype.addRunner = function (dependencies, factory) {
-        this.runners.push(new Library("Runner", dependencies, factory, this));
+        this.runners.push(new JsModule("Runner", dependencies, factory, this));
     };
     ModuleManager.prototype.addModule = function (name, dependencies, factory) {
-        this.unloaded[name] = new Library(name, dependencies, factory, this);
+        this.unloaded[name] = new JsModule(name, dependencies, factory, this);
     };
     ModuleManager.prototype.isModuleLoaded = function (name) {
         return this.loaded[name] !== undefined;
@@ -81,7 +81,7 @@ var ModuleManager = (function () {
             fullyLoaded = fullyLoaded && dep.loaded;
         }
         if (fullyLoaded) {
-            module = new Module(library.name, this);
+            module = new JsModuleStatus(library.name, this);
             var args = [module.exports, module];
             for (var i = 0; i < dependencies.length; ++i) {
                 var dep = dependencies[i];
@@ -179,52 +179,53 @@ var ModuleManager = (function () {
     };
     return ModuleManager;
 }());
-var jsns = jsns || (function () {
-    var moduleManager = new ModuleManager();
-    var retVal = {
-        run: function (dependencies, factory) {
-            moduleManager.addRunner(dependencies, factory);
-            moduleManager.loadRunners();
-        },
-        define: function (name, dependencies, factory) {
-            if (!moduleManager.isModuleDefined(name)) {
-                moduleManager.addModule(name, dependencies, factory);
-                moduleManager.loadRunners();
-            }
-        },
-        amd: function (name, discoverFunc) {
-            if (!moduleManager.isModuleDefined(name)) {
-                moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
-                    retVal.define(name, dependencies, factory);
-                });
-                moduleManager.loadRunners();
-            }
-        },
-        runAmd: function (discoverFunc) {
-            moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
-                retVal.run(dependencies, factory);
-            });
-            moduleManager.loadRunners();
-        },
-        runNamedAmd: function (name) {
-            retVal.run([name], function () { });
-        },
-        addRunnerBlocker: function (blockerName) {
-            moduleManager.addRunnerBlocker(blockerName);
-        },
-        removeRunnerBlocker: function (blockerName) {
-            if (moduleManager.removeRunnerBlocker(blockerName)) {
-                moduleManager.loadRunners();
-            }
-        },
-        debug: function () {
-            moduleManager.debug();
-        },
-        writeLoadedModules: function () {
+var Loader = (function () {
+    function Loader() {
+        this.moduleManager = new ModuleManager();
+    }
+    Loader.prototype.run = function (dependencies, factory) {
+        this.moduleManager.addRunner(dependencies, factory);
+        this.moduleManager.loadRunners();
+    };
+    Loader.prototype.define = function (name, dependencies, factory) {
+        if (!this.moduleManager.isModuleDefined(name)) {
+            this.moduleManager.addModule(name, dependencies, factory);
+            this.moduleManager.loadRunners();
         }
     };
-    return retVal;
-})();
+    Loader.prototype.amd = function (name, discoverFunc) {
+        var _this = this;
+        if (!this.moduleManager.isModuleDefined(name)) {
+            this.moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
+                _this.define(name, dependencies, factory);
+            });
+            this.moduleManager.loadRunners();
+        }
+    };
+    Loader.prototype.runAmd = function (discoverFunc) {
+        var _this = this;
+        this.moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
+            _this.run(dependencies, factory);
+        });
+        this.moduleManager.loadRunners();
+    };
+    Loader.prototype.runNamedAmd = function (name) {
+        this.run([name], function () { });
+    };
+    Loader.prototype.addRunnerBlocker = function (blockerName) {
+        this.moduleManager.addRunnerBlocker(blockerName);
+    };
+    Loader.prototype.removeRunnerBlocker = function (blockerName) {
+        if (this.moduleManager.removeRunnerBlocker(blockerName)) {
+            this.moduleManager.loadRunners();
+        }
+    };
+    Loader.prototype.debug = function () {
+        this.moduleManager.debug();
+    };
+    return Loader;
+}());
+var jsns = jsns || new Loader();
 function define(name, deps, factory) {
     window.jsns.amd(name, function (cbDefine) {
         cbDefine(deps, factory);

@@ -2,7 +2,7 @@
 
 };
 
-class Module {
+class JsModuleStatus {
     private loadingDelayed = false;
     private name: string;
 
@@ -39,7 +39,7 @@ class Module {
     }
 }
 
-class Library{
+class JsModule{
     name: string;
     factory;
     dependencies = [];
@@ -67,11 +67,11 @@ class ModuleManager {
     private runBlockers = [];
 
     addRunner(dependencies, factory) {
-        this.runners.push(new Library("Runner", dependencies, factory, this));
+        this.runners.push(new JsModule("Runner", dependencies, factory, this));
     }
 
     addModule(name, dependencies, factory) {
-        this.unloaded[name] = new Library(name, dependencies, factory, this);
+        this.unloaded[name] = new JsModule(name, dependencies, factory, this);
     }
 
     isModuleLoaded(name) {
@@ -117,7 +117,7 @@ class ModuleManager {
 
         //If all dependencies are loaded, load this library
         if (fullyLoaded) {
-            module = new Module(library.name, this);
+            module = new JsModuleStatus(library.name, this);
             var args = [module.exports, module];
 
             //Inject dependency arguments
@@ -233,62 +233,57 @@ class ModuleManager {
     }
 }
 
-var jsns = jsns || (function () {
-    var moduleManager = new ModuleManager();
+class Loader {
+    private moduleManager = new ModuleManager();
 
-    var retVal = {
-        run: function (dependencies, factory) {
-            moduleManager.addRunner(dependencies, factory);
-            moduleManager.loadRunners();
-        },
+    run(dependencies, factory) {
+        this.moduleManager.addRunner(dependencies, factory);
+        this.moduleManager.loadRunners();
+    }
 
-        define: function (name, dependencies, factory) {
-            if (!moduleManager.isModuleDefined(name)) {
-                moduleManager.addModule(name, dependencies, factory);
-                moduleManager.loadRunners();
-            }
-        },
-
-        amd: function (name, discoverFunc) {
-            if (!moduleManager.isModuleDefined(name)){
-                moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
-                    retVal.define(name, dependencies, factory);
-                });
-                moduleManager.loadRunners();
-            }
-        },
-
-        runAmd: function (discoverFunc) {
-            moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
-                retVal.run(dependencies, factory);
-            });
-            moduleManager.loadRunners();
-        },
-        runNamedAmd: function (name) {
-            retVal.run([name], function () { }); //Load the dependency and then do an empty function to simulate a runner.
-        },
-
-        addRunnerBlocker: function (blockerName: string) {
-            moduleManager.addRunnerBlocker(blockerName);
-        },
-
-        removeRunnerBlocker: function (blockerName: string) {
-            if (moduleManager.removeRunnerBlocker(blockerName)) {
-                moduleManager.loadRunners();
-            }
-        },
-
-        debug: function () {
-            moduleManager.debug();
-        },
-
-        writeLoadedModules: function(){
-
+    define(name, dependencies, factory) {
+        if (!this.moduleManager.isModuleDefined(name)) {
+            this.moduleManager.addModule(name, dependencies, factory);
+            this.moduleManager.loadRunners();
         }
     }
 
-    return retVal;
-})();
+    amd(name, discoverFunc) {
+        if (!this.moduleManager.isModuleDefined(name)) {
+            this.moduleManager.discoverAmd(discoverFunc, (dependencies, factory) => {
+                this.define(name, dependencies, factory);
+            });
+            this.moduleManager.loadRunners();
+        }
+    }
+
+    runAmd(discoverFunc) {
+        this.moduleManager.discoverAmd(discoverFunc, (dependencies, factory) => {
+            this.run(dependencies, factory);
+        });
+        this.moduleManager.loadRunners();
+    }
+
+    runNamedAmd(name) {
+        this.run([name], () => { }); //Load the dependency and then do an empty function to simulate a runner.
+    }
+
+    addRunnerBlocker(blockerName: string) {
+        this.moduleManager.addRunnerBlocker(blockerName);
+    }
+
+    removeRunnerBlocker(blockerName: string) {
+        if (this.moduleManager.removeRunnerBlocker(blockerName)) {
+            this.moduleManager.loadRunners();
+        }
+    }
+
+    debug() {
+        this.moduleManager.debug();
+    }
+}
+
+var jsns = jsns || new Loader();
 
 function define(name, deps, factory) {
     (<any>window).jsns.amd(name, function (cbDefine) {
