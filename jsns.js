@@ -1,24 +1,13 @@
-;
-var JsModuleStatus = (function () {
-    function JsModuleStatus(name, loader) {
+var JsModuleInstance = (function () {
+    function JsModuleInstance(definition, loader) {
+        this.definition = definition;
         this.loader = loader;
-        this.loadingDelayed = false;
         this.exports = {};
     }
-    JsModuleStatus.prototype.isLoadingDelayed = function () {
-        return this.loadingDelayed;
-    };
-    JsModuleStatus.prototype.delayLoading = function () {
-        this.loadingDelayed = true;
-    };
-    JsModuleStatus.prototype.loaded = function () {
-        this.loader.setModuleLoaded(name, this);
-        this.loader.loadRunners();
-    };
-    return JsModuleStatus;
+    return JsModuleInstance;
 }());
-var JsModule = (function () {
-    function JsModule(name, depNames, factory, loader) {
+var JsModuleDefinition = (function () {
+    function JsModuleDefinition(name, depNames, factory, loader) {
         this.dependencies = [];
         this.name = name;
         this.factory = factory;
@@ -32,20 +21,19 @@ var JsModule = (function () {
             }
         }
     }
-    return JsModule;
+    return JsModuleDefinition;
 }());
 var ModuleManager = (function () {
     function ModuleManager() {
         this.loaded = {};
         this.unloaded = {};
         this.runners = [];
-        this.runBlockers = [];
     }
     ModuleManager.prototype.addRunner = function (dependencies, factory) {
-        this.runners.push(new JsModule("Runner", dependencies, factory, this));
+        this.runners.push(new JsModuleDefinition("Runner", dependencies, factory, this));
     };
     ModuleManager.prototype.addModule = function (name, dependencies, factory) {
-        this.unloaded[name] = new JsModule(name, dependencies, factory, this);
+        this.unloaded[name] = new JsModuleDefinition(name, dependencies, factory, this);
     };
     ModuleManager.prototype.isModuleLoaded = function (name) {
         return this.loaded[name] !== undefined;
@@ -81,26 +69,22 @@ var ModuleManager = (function () {
             fullyLoaded = fullyLoaded && dep.loaded;
         }
         if (fullyLoaded) {
-            module = new JsModuleStatus(check.name, this);
+            module = new JsModuleInstance(check, this);
             var args = [module.exports, module];
             for (var i = 0; i < dependencies.length; ++i) {
                 var dep = dependencies[i];
                 args.push(this.loaded[dep.name].exports);
             }
             check.factory.apply(module, args);
-            if (!module.isLoadingDelayed()) {
-                this.setModuleLoaded(check.name, module);
-            }
+            this.setModuleLoaded(check.name, module);
         }
-        return fullyLoaded && !module.isLoadingDelayed();
+        return fullyLoaded;
     };
     ModuleManager.prototype.loadRunners = function () {
-        if (this.runBlockers.length === 0) {
-            for (var i = 0; i < this.runners.length; ++i) {
-                var runner = this.runners[i];
-                if (this.checkModule(runner)) {
-                    this.runners.splice(i--, 1);
-                }
+        for (var i = 0; i < this.runners.length; ++i) {
+            var runner = this.runners[i];
+            if (this.checkModule(runner)) {
+                this.runners.splice(i--, 1);
             }
         }
     };
@@ -166,17 +150,6 @@ var ModuleManager = (function () {
             factory.apply(this, args);
         });
     };
-    ModuleManager.prototype.addRunnerBlocker = function (blockerName) {
-        this.runBlockers.push(blockerName);
-    };
-    ModuleManager.prototype.removeRunnerBlocker = function (blockerName) {
-        var index = this.runBlockers.indexOf(blockerName);
-        if (index !== -1) {
-            this.runBlockers.splice(index, 1);
-            return true;
-        }
-        return false;
-    };
     return ModuleManager;
 }());
 var Loader = (function () {
@@ -211,14 +184,6 @@ var Loader = (function () {
     };
     Loader.prototype.runNamedAmd = function (name) {
         this.run([name], function () { });
-    };
-    Loader.prototype.addRunnerBlocker = function (blockerName) {
-        this.moduleManager.addRunnerBlocker(blockerName);
-    };
-    Loader.prototype.removeRunnerBlocker = function (blockerName) {
-        if (this.moduleManager.removeRunnerBlocker(blockerName)) {
-            this.moduleManager.loadRunners();
-        }
     };
     Loader.prototype.debug = function () {
         this.moduleManager.debug();

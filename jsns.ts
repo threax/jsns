@@ -1,48 +1,20 @@
-﻿interface ModuleDefFunc {
+﻿interface Dependency {
+    name: string,
+    loaded: boolean
+}
 
-};
-
-class JsModuleStatus {
-    private loadingDelayed = false;
-    private name: string;
-
-    constructor(name: string, private loader: ModuleManager){
+class JsModuleInstance {
+    constructor(public definition: JsModuleDefinition, private loader: ModuleManager) {
     
     }
 
     public exports: any = {};
-
-    /**
-     * Figure out if this module is delay loading.
-     * @returns {bool} True if delay loading, false if fully loaded
-     */
-    isLoadingDelayed () {
-        return this.loadingDelayed;
-    }
-
-    /**
-     * Set this module to delay loading mode, you must call setLoaded manually
-     * after calling this function or the module will never be considered loaded.
-     * Do this if you need additional async calls to fully load your module.
-     */
-    delayLoading () {
-        this.loadingDelayed = true;
-    }
-
-    /**
-     * Set the module to loaded. Only needs to be called if delayLoading is called,
-     * otherwise there is no need.
-     */
-    loaded() {
-        this.loader.setModuleLoaded(name, this);
-        this.loader.loadRunners();
-    }
 }
 
-class JsModule{
+class JsModuleDefinition{
     name: string;
     factory;
-    dependencies = [];
+    dependencies: Dependency[] = [];
 
     constructor(name: string, depNames: string[], factory, loader: ModuleManager) {
         this.name = name;
@@ -65,17 +37,16 @@ interface Map<T> {
 }
 
 class ModuleManager {
-    private loaded: Map<JsModuleStatus> = {};
-    private unloaded: Map<JsModule> = {};
-    private runners: JsModule[] = [];
-    private runBlockers = [];
+    private loaded: Map<JsModuleInstance> = {};
+    private unloaded: Map<JsModuleDefinition> = {};
+    private runners: JsModuleDefinition[] = [];
 
     addRunner(dependencies: string[], factory) {
-        this.runners.push(new JsModule("Runner", dependencies, factory, this));
+        this.runners.push(new JsModuleDefinition("Runner", dependencies, factory, this));
     }
 
     addModule(name: string, dependencies: string[], factory) {
-        this.unloaded[name] = new JsModule(name, dependencies, factory, this);
+        this.unloaded[name] = new JsModuleDefinition(name, dependencies, factory, this);
     }
 
     isModuleLoaded(name: string) {
@@ -98,16 +69,16 @@ class ModuleManager {
         return loaded;
     }
 
-    setModuleLoaded(name: string, module: JsModuleStatus) {
+    setModuleLoaded(name: string, module: JsModuleInstance) {
         if (this.loaded[name] === undefined) {
             this.loaded[name] = module;
         }
     }
 
-    checkModule(check: JsModule) {
+    checkModule(check: JsModuleDefinition) {
         var dependencies = check.dependencies;
         var fullyLoaded = true;
-        var module = undefined;
+        var module: JsModuleInstance = undefined;
 
         //Check to see if depenedencies are loaded and if they aren't and can be, load them
         for (var i = 0; i < dependencies.length; ++i) {
@@ -121,7 +92,7 @@ class ModuleManager {
 
         //If all dependencies are loaded, load this library
         if (fullyLoaded) {
-            module = new JsModuleStatus(check.name, this);
+            module = new JsModuleInstance(check, this);
             var args = [module.exports, module];
 
             //Inject dependency arguments
@@ -132,21 +103,17 @@ class ModuleManager {
 
             check.factory.apply(module, args);
 
-            if (!module.isLoadingDelayed()) {
-                this.setModuleLoaded(check.name, module);
-            }
+            this.setModuleLoaded(check.name, module);
         }
 
-        return fullyLoaded && !module.isLoadingDelayed();
+        return fullyLoaded;
     }
 
     loadRunners() {
-        if (this.runBlockers.length === 0) { //If there are any run blockers, do nothing
-            for (var i = 0; i < this.runners.length; ++i) {
-                var runner = this.runners[i];
-                if (this.checkModule(runner)) {
-                    this.runners.splice(i--, 1);
-                }
+        for (var i = 0; i < this.runners.length; ++i) {
+            var runner = this.runners[i];
+            if (this.checkModule(runner)) {
+                this.runners.splice(i--, 1);
             }
         }
     }
@@ -218,23 +185,6 @@ class ModuleManager {
             factory.apply(this, args);
         });
     }
-
-    addRunnerBlocker(blockerName) {
-        this.runBlockers.push(blockerName);
-    }
-
-    /**
-     * Remove a runner blocker, returns true if all blockers are removed, and false if they are not.
-     * @param blockerName
-     */
-    removeRunnerBlocker(blockerName: string) {
-        var index = this.runBlockers.indexOf(blockerName);
-        if (index !== -1) {
-            this.runBlockers.splice(index, 1);
-            return true;
-        }
-        return false;
-    }
 }
 
 class Loader {
@@ -270,16 +220,6 @@ class Loader {
 
     runNamedAmd(name) {
         this.run([name], () => { }); //Load the dependency and then do an empty function to simulate a runner.
-    }
-
-    addRunnerBlocker(blockerName: string) {
-        this.moduleManager.addRunnerBlocker(blockerName);
-    }
-
-    removeRunnerBlocker(blockerName: string) {
-        if (this.moduleManager.removeRunnerBlocker(blockerName)) {
-            this.moduleManager.loadRunners();
-        }
     }
 
     debug() {
