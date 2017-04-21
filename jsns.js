@@ -24,11 +24,21 @@ var JsModuleDefinition = (function () {
     }
     JsModuleDefinition.prototype.getModuleCode = function () {
         if (this.moduleCodeFinder !== undefined) {
-            return this.moduleCodeFinder();
+            return this.moduleCodeFinder(this);
         }
         else {
-            return this.factory;
+            return 'jsns.define("' + this.name + '", ' + this.getDependenciesString() + ', ' + this.factory + ');\n';
         }
+    };
+    JsModuleDefinition.prototype.getDependenciesString = function () {
+        var deps = '[';
+        var sep = '';
+        for (var i = 0; i < this.dependencies.length; ++i) {
+            deps += sep + '"' + this.dependencies[i].name + '"';
+            sep = ',';
+        }
+        deps += ']';
+        return deps;
     };
     return JsModuleDefinition;
 }());
@@ -141,7 +151,7 @@ var ModuleManager = (function () {
         for (var p in this.loaded) {
             if (this.loaded.hasOwnProperty(p)) {
                 var mod = this.loaded[p];
-                modules += mod.definition.getModuleCode() + ';\n\n';
+                modules += mod.definition.getModuleCode();
             }
         }
         console.log(modules);
@@ -210,7 +220,7 @@ var Loader = (function () {
         var _this = this;
         if (!this.moduleManager.isModuleDefined(name)) {
             this.moduleManager.discoverAmd(discoverFunc, function (dependencies, factory, amdFactory) {
-                _this.moduleManager.addModule(name, dependencies, factory, function () { return _this.writeAmdFactory(amdFactory); });
+                _this.moduleManager.addModule(name, dependencies, factory, function (def) { return _this.writeAmdFactory(amdFactory, def); });
             });
             this.moduleManager.loadRunners();
         }
@@ -231,8 +241,8 @@ var Loader = (function () {
     Loader.prototype.createFileFromLoaded = function () {
         this.moduleManager.createFileFromLoaded();
     };
-    Loader.prototype.writeAmdFactory = function (amdFactory) {
-        return 'function (exports, module) { var factory = \n' + amdFactory + ';\n var args = []; for (var _i = 2; _i < arguments.length; _i++) { args[_i - 2] = arguments[_i]; } args.unshift(exports); args.unshift(function() {}); factory.apply(this, args); }';
+    Loader.prototype.writeAmdFactory = function (amdFactory, def) {
+        return 'define("' + def.name + '", ' + def.getDependenciesString() + ', ' + amdFactory + ');\n';
     };
     return Loader;
 }());
