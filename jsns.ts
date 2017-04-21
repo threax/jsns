@@ -1,71 +1,106 @@
-﻿var jsns = jsns || (function () {
-    "use strict";
+﻿interface ModuleDefFunc {
 
-    var loaded = {};
-    var unloaded = {};
-    var runners = [];
-    var runBlockers = [];
+};
 
-    function isModuleLoaded(name) {
-        return loaded[name] !== undefined;
+class Module {
+    private loadingDelayed = false;
+    private name: string;
+
+    constructor(name: string, private loader: ModuleManager){
+    
     }
 
-    function isModuleLoadable(name) {
-        return unloaded[name] !== undefined;
+    public exports: any = {};
+
+    /**
+     * Figure out if this module is delay loading.
+     * @returns {bool} True if delay loading, false if fully loaded
+     */
+    isLoadingDelayed () {
+        return this.loadingDelayed;
     }
 
-    function isModuleDefined(name){
-        return isModuleLoaded(name) || isModuleLoadable(name);
+    /**
+     * Set this module to delay loading mode, you must call setLoaded manually
+     * after calling this function or the module will never be considered loaded.
+     * Do this if you need additional async calls to fully load your module.
+     */
+    delayLoading () {
+        this.loadingDelayed = true;
     }
 
-    function loadModule(name){
-        var loaded = checkLib(unloaded[name]);
+    /**
+     * Set the module to loaded. Only needs to be called if delayLoading is called,
+     * otherwise there is no need.
+     */
+    loaded() {
+        this.loader.setModuleLoaded(name, self);
+        this.loader.loadRunners();
+    }
+}
+
+class Library{
+    name: string;
+    factory;
+    dependencies = [];
+
+    constructor(name, depNames, factory, loader: ModuleManager) {
+        this.name = name;
+        this.factory = factory;
+
+        if (depNames) {
+            for (var i = 0; i < depNames.length; ++i) {
+                var depName = depNames[i];
+                this.dependencies.push({
+                    name: depName,
+                    loaded: loader.isModuleLoaded(depName)
+                });
+            }
+        }
+    }
+}
+
+class ModuleManager {
+    private loaded = {};
+    private unloaded = {};
+    private runners = [];
+    private runBlockers = [];
+
+    addRunner(dependencies, factory) {
+        this.runners.push(new Library("Runner", dependencies, factory, this));
+    }
+
+    addModule(name, dependencies, factory) {
+        this.unloaded[name] = new Library(name, dependencies, factory, this);
+    }
+
+    isModuleLoaded(name) {
+        return this.loaded[name] !== undefined;
+    }
+
+    isModuleLoadable(name) {
+        return this.unloaded[name] !== undefined;
+    }
+
+    isModuleDefined(name) {
+        return this.isModuleLoaded(name) || this.isModuleLoadable(name);
+    }
+
+    loadModule(name) {
+        var loaded = this.checkLib(this.unloaded[name]);
         if (loaded) {
-            delete unloaded[name];
+            delete this.unloaded[name];
         }
         return loaded;
     }
 
-    function setModuleLoaded(name, module) {
-        if (loaded[name] === undefined) {
-            loaded[name] = module;
+    setModuleLoaded(name, module) {
+        if (this.loaded[name] === undefined) {
+            this.loaded[name] = module;
         }
     }
 
-    function Module(name) {
-        var loadingDelayed = false;
-        var self = this;
-
-        this.exports = {};
-
-        /**
-         * Figure out if this module is delay loading.
-         * @returns {bool} True if delay loading, false if fully loaded
-         */
-        this.isLoadingDelayed = function(){
-            return loadingDelayed;
-        }
-
-        /**
-         * Set this module to delay loading mode, you must call setLoaded manually
-         * after calling this function or the module will never be considered loaded.
-         * Do this if you need additional async calls to fully load your module.
-         */
-        this.delayLoading = function () {
-            loadingDelayed = true;
-        }
-
-        /**
-         * Set the module to loaded. Only needs to be called if delayLoading is called,
-         * otherwise there is no need.
-         */
-        this.loaded = function () {
-            setModuleLoaded(name, self);
-            loadRunners();
-        }
-    }
-
-    function checkLib(library) {
+    checkLib(library) {
         var dependencies = library.dependencies;
         var fullyLoaded = true;
         var module = undefined;
@@ -73,74 +108,76 @@
         //Check to see if depenedencies are loaded and if they aren't and can be, load them
         for (var i = 0; i < dependencies.length; ++i) {
             var dep = dependencies[i];
-            dep.loaded = isModuleLoaded(dep.name);
-            if (!dep.loaded && isModuleLoadable(dep.name)) {
-                dep.loaded = loadModule(dep.name);
+            dep.loaded = this.isModuleLoaded(dep.name);
+            if (!dep.loaded && this.isModuleLoadable(dep.name)) {
+                dep.loaded = this.loadModule(dep.name);
             }
             fullyLoaded = fullyLoaded && dep.loaded;
         }
 
         //If all dependencies are loaded, load this library
         if (fullyLoaded) {
-            module = new Module(library.name);
+            module = new Module(library.name, this);
             var args = [module.exports, module];
 
             //Inject dependency arguments
             for (var i = 0; i < dependencies.length; ++i) {
                 var dep = dependencies[i];
-                args.push(loaded[dep.name].exports);
+                args.push(this.loaded[dep.name].exports);
             }
 
             library.factory.apply(module, args);
 
             if (!module.isLoadingDelayed()) {
-                setModuleLoaded(library.name, module);
+                this.setModuleLoaded(library.name, module);
             }
         }
 
         return fullyLoaded && !module.isLoadingDelayed();
     }
 
-    function Library(name, depNames, factory) {
-        this.name = name;
-        this.factory = factory;
-        this.dependencies = [];
-
-        if (depNames) {
-            for (var i = 0; i < depNames.length; ++i) {
-                var depName = depNames[i];
-                this.dependencies.push({
-                    name: depName,
-                    loaded: isModuleLoaded(depName)
-                });
-            }
-        }
-    }
-
-    function loadRunners() {
-        if(runBlockers.length === 0) { //If there are any run blockers, do nothing
-            for (var i = 0; i < runners.length; ++i) {
-                var runner = runners[i];
-                if (checkLib(runner)) {
-                    runners.splice(i--, 1);
+    loadRunners() {
+        if (this.runBlockers.length === 0) { //If there are any run blockers, do nothing
+            for (var i = 0; i < this.runners.length; ++i) {
+                var runner = this.runners[i];
+                if (this.checkLib(runner)) {
+                    this.runners.splice(i--, 1);
                 }
             }
         }
     }
 
-    function recursiveWaitingDebug(name, indent) {
+    debug() {
+        if (this.runners.length > 0) {
+            for (var i = 0; i < this.runners.length; ++i) {
+                var runner = this.runners[i];
+                console.log("Runner waiting " + runner.name);
+                for (var j = 0; j < runner.dependencies.length; ++j) {
+                    var dependency = runner.dependencies[j];
+                    if (!this.isModuleLoaded(dependency.name)) {
+                        this.recursiveWaitingDebug(dependency.name, 1);
+                    }
+                }
+            }
+        }
+        else {
+            console.log("No runners remaining.");
+        }
+    }
+
+    private recursiveWaitingDebug(name, indent) {
         var indentStr = '';
         for (var i = 0; i < indent; ++i) {
             indentStr += ' ';
         }
 
-        var module = unloaded[name];
+        var module = this.unloaded[name];
         if (module !== undefined) {
             console.log(indentStr + module.name);
             for (var j = 0; j < module.dependencies.length; ++j) {
                 var dependency = module.dependencies[j];
-                if (!isModuleLoaded(dependency.name)) {
-                    recursiveWaitingDebug(dependency.name, indent + 4);
+                if (!this.isModuleLoaded(dependency.name)) {
+                    this.recursiveWaitingDebug(dependency.name, indent + 4);
                 }
             }
         }
@@ -149,11 +186,11 @@
         }
     }
 
-    function require() {
+    require() {
 
     }
 
-    function discoverAmd(discoverFunc, callback) {
+    discoverAmd(discoverFunc, callback) {
         var dependencies;
         var factory;
         discoverFunc(function (dep, fac) {
@@ -173,70 +210,80 @@
 
         callback(dependencies, function (exports, module, ...args: any[]) {
             args.unshift(exports);
-            args.unshift(require);
+            args.unshift(this.require);
             factory.apply(this, args);
         });
     }
 
+    addRunnerBlocker(blockerName) {
+        this.runBlockers.push(blockerName);
+    }
+
+    /**
+     * Remove a runner blocker, returns true if all blockers are removed, and false if they are not.
+     * @param blockerName
+     */
+    removeRunnerBlocker(blockerName: string) {
+        var index = this.runBlockers.indexOf(blockerName);
+        if (index !== -1) {
+            this.runBlockers.splice(index, 1);
+            return true;
+        }
+        return false;
+    }
+}
+
+var jsns = jsns || (function () {
+    var moduleManager = new ModuleManager();
+
     var retVal = {
         run: function (dependencies, factory) {
-            runners.push(new Library("Runner", dependencies, factory));
-            loadRunners();
+            moduleManager.addRunner(dependencies, factory);
+            moduleManager.loadRunners();
         },
 
         define: function (name, dependencies, factory) {
-            if(!isModuleDefined(name)){
-                unloaded[name] = new Library(name, dependencies, factory);
-                loadRunners();
+            if (!moduleManager.isModuleDefined(name)) {
+                moduleManager.addModule(name, dependencies, factory);
+                moduleManager.loadRunners();
             }
         },
 
         amd: function (name, discoverFunc) {
-            if(!isModuleDefined(name)){
-                discoverAmd(discoverFunc, function (dependencies, factory) {
+            if (!moduleManager.isModuleDefined(name)){
+                moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
                     retVal.define(name, dependencies, factory);
                 });
-                loadRunners();
+                moduleManager.loadRunners();
             }
         },
 
         runAmd: function (discoverFunc) {
-            discoverAmd(discoverFunc, function (dependencies, factory) {
+            moduleManager.discoverAmd(discoverFunc, function (dependencies, factory) {
                 retVal.run(dependencies, factory);
             });
-            loadRunners();
+            moduleManager.loadRunners();
         },
         runNamedAmd: function (name) {
             retVal.run([name], function () { }); //Load the dependency and then do an empty function to simulate a runner.
         },
-        addRunnerBlocker: function(blockerName){
-            runBlockers.push(blockerName);
+
+        addRunnerBlocker: function (blockerName: string) {
+            moduleManager.addRunnerBlocker(blockerName);
         },
 
-        removeRunnerBlocker: function(blockerName){
-            var index = runBlockers.indexOf(blockerName);
-            if(index !== -1){
-                runBlockers.splice(index, 1);
-                loadRunners();
+        removeRunnerBlocker: function (blockerName: string) {
+            if (moduleManager.removeRunnerBlocker(blockerName)) {
+                moduleManager.loadRunners();
             }
         },
 
         debug: function () {
-            if (runners.length > 0) {
-                for (var i = 0; i < runners.length; ++i) {
-                    var runner = runners[i];
-                    console.log("Runner waiting " + runner.name);
-                    for (var j = 0; j < runner.dependencies.length; ++j) {
-                        var dependency = runner.dependencies[j];
-                        if (!isModuleLoaded(dependency.name)) {
-                            recursiveWaitingDebug(dependency.name, 1);
-                        }
-                    }
-                }
-            }
-            else {
-                console.log("No runners remaining.");
-            }
+            moduleManager.debug();
+        },
+
+        writeLoadedModules: function(){
+
         }
     }
 
