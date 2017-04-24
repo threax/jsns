@@ -237,7 +237,7 @@ var jsnsDefine = jsnsDefine ||
                     ignoredSources = [];
                 } 
 
-                var modules = "var jsnsOptions = jsnsOptions || {};\nvar jsnsDefine =" + jsnsDefine + "\nvar jsns = jsns || jsnsDefine(jsnsOptions);\n";
+                var modules = "var jsnsOptions = jsnsOptions || {};\nvar jsnsDefine =" + jsnsDefine + "\nvar jsns = jsns || jsnsDefine(jsnsOptions);\nvar define = define || " + define + '\n';
                 for(var i = 0; i < this.loadedOrder.length; ++i){
                     var p = this.loadedOrder[i];
                     if (this.loaded.hasOwnProperty(p)) {
@@ -365,7 +365,7 @@ var jsnsDefine = jsnsDefine ||
 
 var jsns = jsns || jsnsDefine(jsnsOptions);
 
-function define(name, deps, factory) {
+var define = define || function (name, deps, factory) {
     jsns.amd(name, function (cbDefine) {
         cbDefine(deps, factory);
     });

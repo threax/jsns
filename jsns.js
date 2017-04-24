@@ -1,5 +1,5 @@
 var jsnsOptions = jsnsOptions || {};
-var jsns = jsns ||
+var jsnsDefine = jsnsDefine ||
     (function (options) {
         var JsModuleInstance = (function () {
             function JsModuleInstance(definition, loader) {
@@ -56,6 +56,7 @@ var jsns = jsns ||
         var ModuleManager = (function () {
             function ModuleManager(options) {
                 this.loaded = {};
+                this.loadedOrder = [];
                 this.unloaded = {};
                 this.runners = [];
                 this.fromModuleRunners = null;
@@ -179,7 +180,7 @@ var jsns = jsns ||
                 if (ignoredSources === undefined) {
                     ignoredSources = [];
                 }
-                var modules = "";
+                var modules = "var jsnsOptions = jsnsOptions || {};\nvar jsnsDefine =" + jsnsDefine + "\nvar jsns = jsns || jsnsDefine(jsnsOptions);\nvar define = define || " + define + '\n';
                 for (var i = 0; i < this.loadedOrder.length; ++i) {
                     var p = this.loadedOrder[i];
                     if (this.loaded.hasOwnProperty(p)) {
@@ -280,10 +281,11 @@ var jsns = jsns ||
             return Loader;
         }());
         return new Loader(new ModuleManager(options));
-    })(jsnsOptions);
-function define(name, deps, factory) {
+    });
+var jsns = jsns || jsnsDefine(jsnsOptions);
+var define = define || function (name, deps, factory) {
     jsns.amd(name, function (cbDefine) {
         cbDefine(deps, factory);
     });
-}
+};
 //# sourceMappingURL=jsns.js.map
