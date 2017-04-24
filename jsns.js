@@ -41,9 +41,15 @@ var jsnsDefine = jsnsDefine ||
                     return 'jsns.define("' + this.name + '", ' + this.getDependenciesArg() + ', ' + this.factory + ');\n';
                 }
             };
-            JsModuleDefinition.prototype.getDependenciesArg = function () {
+            JsModuleDefinition.prototype.getDependenciesArg = function (preDependencies) {
                 var deps = '[';
                 var sep = '';
+                if (preDependencies) {
+                    for (var i = 0; i < preDependencies.length; ++i) {
+                        deps += sep + '"' + preDependencies[i] + '"';
+                        sep = ',';
+                    }
+                }
                 for (var i = 0; i < this.dependencies.length; ++i) {
                     deps += sep + '"' + this.dependencies[i].name + '"';
                     sep = ',';
@@ -250,7 +256,7 @@ var jsnsDefine = jsnsDefine ||
                 return this.moduleManager.createFileFromLoaded(ignoredSources);
             };
             Loader.prototype.writeAmdFactory = function (amdFactory, def) {
-                return 'define("' + def.name + '", ' + def.getDependenciesArg() + ', ' + amdFactory + ');\n';
+                return 'define("' + def.name + '", ' + def.getDependenciesArg(["require", "exports"]) + ', ' + amdFactory + ');\n';
             };
             Loader.prototype.require = function () {
             };
