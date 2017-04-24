@@ -5,7 +5,7 @@
 }
 
 var jsnsOptions: ModuleManagerOptions = jsnsOptions || {};
-var jsns = jsns ||
+var jsnsDefine = jsnsDefine || 
     (function (options?: ModuleManagerOptions) {
         interface Dependency {
             name: string,
@@ -235,9 +235,9 @@ var jsns = jsns ||
             createFileFromLoaded(ignoredSources?: any[]) {
                 if(ignoredSources === undefined){
                     ignoredSources = [];
-                }
+                } 
 
-                var modules = "";
+                var modules = "var jsnsOptions = jsnsOptions || {};\nvar jsnsDefine =" + jsnsDefine + "\nvar jsns = jsns || jsnsDefine(jsnsOptions);\n";
                 for(var i = 0; i < this.loadedOrder.length; ++i){
                     var p = this.loadedOrder[i];
                     if (this.loaded.hasOwnProperty(p)) {
@@ -361,7 +361,9 @@ var jsns = jsns ||
 
         //Return the instance
         return new Loader(new ModuleManager(options));
-    })(jsnsOptions);
+    });
+
+var jsns = jsns || jsnsDefine(jsnsOptions);
 
 function define(name, deps, factory) {
     jsns.amd(name, function (cbDefine) {
