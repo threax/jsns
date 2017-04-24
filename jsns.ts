@@ -78,6 +78,7 @@ var jsns = jsns ||
             private loaded: Map<JsModuleInstance> = {};
             private unloaded: Map<JsModuleDefinition> = {};
             private runners: JsModuleDefinition[] = [];
+            private fromModuleRunners: JsModuleDefinition[] = null; //When calling run from a module you can't add the runner to the runner's list, this will accumulate the runners during that time.
             private options: ModuleManagerOptions;
 
             constructor(options?: ModuleManagerOptions) {
@@ -87,10 +88,27 @@ var jsns = jsns ||
                 this.options = options;
             }
 
+            /**
+             * Add a runner to the module manager. This will add the runner in such a way that more runners can be defined during
+             * module execution. If such a run is invoked it will be deferred until the current module stops executing.
+             * Because of this management, loadRunners will be called automaticly by the addRunner funciton. There is no reason
+             * for a client class to call that function for runners, and in fact that can create errors.
+             */
             addRunner(name: string, source: string) {
-                this.runners.push(new JsModuleDefinition(name + "Runner", [name], this.runnerFunc, this, source, true));
+                var runnerModule = new JsModuleDefinition(name + "Runner", [name], this.runnerFunc, this, source, true); 
+                if(this.fromModuleRunners !== null){
+                    this.fromModuleRunners.push(runnerModule);
+                }
+                else{
+                    this.runners.push(runnerModule);
+                    this.loadRunners();
+                }
             }
 
+            /**
+             * Add a module to the module manager. Due to the variety of ways that a module could be added the user is responsible for
+             * calling loadRunners() when they are ready to try to load modules.
+             */
             addModule(name: string, dependencies: string[], factory, moduleWriter?: ModuleCodeFinder) {
                 this.unloaded[name] = new JsModuleDefinition(name, dependencies, factory, this, undefined, false, moduleWriter);
             }
@@ -159,11 +177,20 @@ var jsns = jsns ||
             }
 
             loadRunners() {
+                this.fromModuleRunners = [];
                 for (var i = 0; i < this.runners.length; ++i) {
                     var runner = this.runners[i];
                     if (this.checkModule(runner)) {
                         this.runners.splice(i--, 1);
                     }
+                }
+                var moreRunners = this.fromModuleRunners.length > 0; 
+                if(moreRunners){
+                    this.runners = this.runners.concat(this.fromModuleRunners);
+                }
+                this.fromModuleRunners = null;
+                if(moreRunners){
+                    this.loadRunners();
                 }
             }
 
@@ -277,7 +304,6 @@ var jsns = jsns ||
              */
             run(name: string, source?: string) {
                 this.moduleManager.addRunner(name, source);
-                this.moduleManager.loadRunners();
             }
 
             debug() {
