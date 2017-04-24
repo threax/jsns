@@ -62,9 +62,15 @@ var jsnsDefine = jsnsDefine ||
                 }
             }
 
-            public getDependenciesArg() {
+            public getDependenciesArg(preDependencies?: string[]) {
                 var deps = '[';
                 var sep = '';
+                if(preDependencies){
+                    for (var i = 0; i < preDependencies.length; ++i) {
+                        deps += sep + '"' + preDependencies[i] + '"';
+                        sep = ','
+                    }
+                }
                 for (var i = 0; i < this.dependencies.length; ++i) {
                     deps += sep + '"' + this.dependencies[i].name + '"';
                     sep = ','
@@ -326,7 +332,7 @@ var jsnsDefine = jsnsDefine ||
             }
 
             private writeAmdFactory(amdFactory, def: JsModuleDefinition) {
-                return 'define("' + def.name + '", ' + def.getDependenciesArg() + ', ' + amdFactory + ');\n'
+                return 'define("' + def.name + '", ' + def.getDependenciesArg(["require", "exports"]) + ', ' + amdFactory + ');\n'
             }
 
             private require() {
