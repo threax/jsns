@@ -58,7 +58,7 @@ var jsns = jsns ||
                 this.loaded = {};
                 this.unloaded = {};
                 this.runners = [];
-                this.fromModuleRunners = [];
+                this.fromModuleRunners = null;
                 if (options === undefined) {
                     options = {};
                 }
@@ -71,6 +71,7 @@ var jsns = jsns ||
                 }
                 else {
                     this.runners.push(runnerModule);
+                    this.loadRunners();
                 }
             };
             ModuleManager.prototype.addModule = function (name, dependencies, factory, moduleWriter) {
@@ -95,6 +96,7 @@ var jsns = jsns ||
             ModuleManager.prototype.setModuleLoaded = function (name, module) {
                 if (this.loaded[name] === undefined) {
                     this.loaded[name] = module;
+                    this.loadedOrder.push(name);
                 }
             };
             ModuleManager.prototype.checkModule = function (check) {
@@ -133,9 +135,9 @@ var jsns = jsns ||
                 }
                 var moreRunners = this.fromModuleRunners.length > 0;
                 if (moreRunners) {
-                    this.runners.concat(this.fromModuleRunners);
+                    this.runners = this.runners.concat(this.fromModuleRunners);
                 }
-                this.fromModuleRunners = undefined;
+                this.fromModuleRunners = null;
                 if (moreRunners) {
                     this.loadRunners();
                 }
@@ -178,7 +180,8 @@ var jsns = jsns ||
                     ignoredSources = [];
                 }
                 var modules = "";
-                for (var p in this.loaded) {
+                for (var i = 0; i < this.loadedOrder.length; ++i) {
+                    var p = this.loadedOrder[i];
                     if (this.loaded.hasOwnProperty(p)) {
                         var mod = this.loaded[p];
                         modules += mod.definition.getModuleCode(ignoredSources);
@@ -232,7 +235,6 @@ var jsns = jsns ||
             };
             Loader.prototype.run = function (name, source) {
                 this.moduleManager.addRunner(name, source);
-                this.moduleManager.loadRunners();
             };
             Loader.prototype.debug = function () {
                 this.moduleManager.debug();

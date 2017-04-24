@@ -76,6 +76,7 @@ var jsns = jsns ||
 
         class ModuleManager {
             private loaded: Map<JsModuleInstance> = {};
+            private loadedOrder: string[] = [];
             private unloaded: Map<JsModuleDefinition> = {};
             private runners: JsModuleDefinition[] = [];
             private fromModuleRunners: JsModuleDefinition[] = null; //When calling run from a module you can't add the runner to the runner's list, this will accumulate the runners during that time.
@@ -136,6 +137,7 @@ var jsns = jsns ||
             setModuleLoaded(name: string, module: JsModuleInstance) {
                 if (this.loaded[name] === undefined) {
                     this.loaded[name] = module;
+                    this.loadedOrder.push(name);
                 }
             }
 
@@ -236,7 +238,8 @@ var jsns = jsns ||
                 }
 
                 var modules = "";
-                for (var p in this.loaded) {
+                for(var i = 0; i < this.loadedOrder.length; ++i){
+                    var p = this.loadedOrder[i];
                     if (this.loaded.hasOwnProperty(p)) {
                         var mod = this.loaded[p];
                         modules += mod.definition.getModuleCode(ignoredSources);
