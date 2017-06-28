@@ -1,6 +1,6 @@
 {
   "name": "jsns",
-  "version": "4.2.2",
+  "version": "4.2.3",
   "description": "Javascript module loader",
   "main": "jsns.min.js",
   "repository": {

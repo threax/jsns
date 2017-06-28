@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "paths": {
+
+    }
+  },
+  "include": [
+
+  ],
+  "exclude": [
+
+  ],
+  "files": [
+    "tslib.jsns.js"
+  ],
+  "packageManager": "jsns.ts"
+}
