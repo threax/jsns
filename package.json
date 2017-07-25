@@ -1,6 +1,6 @@
 {
   "name": "jsns",
-  "version": "4.2.3",
+  "version": "5.0.0",
   "description": "Javascript module loader",
   "main": "jsns.min.js",
   "repository": {
@@ -15,7 +15,6 @@
   "homepage": "https://github.com/threax/jsns#readme",
   "devDependencies": {
     "@types/node": "^6.0.69",
-    "tslib": "^1.6.1",
     "@types/es6-promise":"^0.0.32" 
   }
 }
