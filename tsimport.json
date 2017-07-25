@@ -10,8 +10,5 @@
   "exclude": [
 
   ],
-  "files": [
-    "tslib.jsns.js"
-  ],
   "packageManager": "jsns.ts"
 }
