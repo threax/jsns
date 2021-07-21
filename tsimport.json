@@ -10,5 +10,8 @@
   "exclude": [
 
   ],
+  "files": [
+    "runattributes.ts"
+  ],
   "packageManager": "jsns.ts"
 }

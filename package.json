@@ -1,20 +1,19 @@
 {
   "name": "jsns",
-  "version": "5.0.0",
+  "version": "5.1.0-pre.0",
   "description": "Javascript module loader",
-  "main": "jsns.min.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/threax/jsns.git"
   },
   "author": "Andrew Piper",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/threax/jsns/issues"
   },
   "homepage": "https://github.com/threax/jsns#readme",
-  "devDependencies": {
-    "@types/node": "^6.0.69",
-    "@types/es6-promise":"^0.0.32" 
-  }
+  "files": [
+    "*.ts",
+    "tsimport.json"
+  ]
 }
