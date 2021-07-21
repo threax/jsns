@@ -1,0 +1,9 @@
+[
+    {
+      "pathBase": ".",
+      "outDir": "lib/jsns",
+      "copy": [
+        "runattributes.js"
+      ]
+    }
+  ]
