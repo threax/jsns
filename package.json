@@ -1,6 +1,6 @@
 {
   "name": "jsns",
-  "version": "5.1.0-pre.2",
+  "version": "5.1.0",
   "description": "Javascript module loader",
   "repository": {
     "type": "git",
